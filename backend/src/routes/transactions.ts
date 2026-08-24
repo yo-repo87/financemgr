@@ -71,3 +71,33 @@ transactionsRouter.get("/categories", async (req: AuthedRequest, res, next) => {
     next(err);
   }
 });
+
+const categorySchema = z.object({ category: z.string().trim().min(1).max(100) });
+
+// Corrects one transaction's category and remembers the correction for that
+// merchant so future synced transactions inherit it automatically (see
+// plaidSync.ts) - Plaid's auto-categorization isn't always right.
+transactionsRouter.patch("/:id/category", async (req: AuthedRequest, res, next) => {
+  try {
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: req.params.id, account: { plaidItem: { userId: req.userId! } } },
+    });
+    if (!transaction) return res.status(404).json({ error: "Not found" });
+
+    const { category } = categorySchema.parse(req.body);
+    const merchantKey = normalizeMerchantKey(transaction.merchantName || transaction.name);
+
+    const [updated] = await prisma.$transaction([
+      prisma.transaction.update({ where: { id: transaction.id }, data: { category } }),
+      prisma.categoryOverride.upsert({
+        where: { userId_merchantKey: { userId: req.userId!, merchantKey } },
+        create: { userId: req.userId!, merchantKey, category },
+        update: { category },
+      }),
+    ]);
+
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});

@@ -21,10 +21,12 @@ import { billsRouter } from "./routes/bills";
 import { notificationsRouter } from "./routes/notifications";
 import { subscriptionsRouter } from "./routes/subscriptions";
 import { analyticsRouter } from "./routes/analytics";
+import { cashflowRouter } from "./routes/cashflow";
 import { aiRouter } from "./routes/ai";
 import { startSyncJob } from "./jobs/sync";
 import { startBillReminderJob } from "./jobs/billReminders";
 import { startSubscriptionDetectionJob } from "./jobs/subscriptionDetection";
+import { startIncomeDetectionJob } from "./jobs/incomeDetection";
 
 const app = express();
 
@@ -74,6 +76,7 @@ app.use("/api/bills", billsRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/subscriptions", subscriptionsRouter);
 app.use("/api/analytics", analyticsRouter);
+app.use("/api/cashflow", cashflowRouter);
 app.use("/api/ai", aiRouter);
 
 app.use(errorHandler);
@@ -83,4 +86,5 @@ app.listen(env.port, () => {
   startSyncJob();
   startBillReminderJob();
   startSubscriptionDetectionJob();
+  startIncomeDetectionJob();
 });

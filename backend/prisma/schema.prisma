@@ -32,8 +32,133 @@ model User {
   pushSubscriptions PushSubscription[]
   notificationSetting NotificationSetting?
   detectedSubscriptions DetectedSubscription[]
+  categoryOverrides CategoryOverride[]
+  detectedIncomes   DetectedIncome[]
+  cashFlowSetting   CashFlowSetting?
+  savingsGoals      SavingsGoal[]
 
   @@map("users")
+}
+
+// A user's own correction of a merchant's category, applied to future synced
+// transactions from the same merchant (see plaidSync.ts) since Plaid's
+// auto-categorization isn't always right and re-fixing it every sync is tedious.
+model CategoryOverride {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  merchantKey String   @map("merchant_key")
+  category    String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantKey])
+  @@map("category_overrides")
+}
+
+enum IncomeStatus {
+  NEW
+  DISMISSED
+  CONFIRMED
+}
+
+// Mirrors DetectedSubscription but for recurring deposits (paychecks, etc) -
+// feeds the cash flow forecast once a user marks one CONFIRMED.
+model DetectedIncome {
+  id               String       @id @default(uuid())
+  userId           String       @map("user_id")
+  merchantKey      String       @map("merchant_key")
+  displayName      String       @map("display_name")
+  amount           Decimal      @db.Decimal(14, 2)
+  cadenceDays      Int          @map("cadence_days")
+  lastReceivedDate DateTime     @map("last_received_date") @db.Date
+  occurrenceCount  Int          @map("occurrence_count")
+  status           IncomeStatus @default(NEW)
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantKey])
+  @@index([userId])
+  @@map("detected_incomes")
+}
+
+model CashFlowSetting {
+  userId             String   @id @map("user_id")
+  lowBalanceThreshold Decimal @default(0) @map("low_balance_threshold") @db.Decimal(14, 2)
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("cash_flow_settings")
+}
+
+// Dedups the daily low-balance push so it fires once per newly-identified dip,
+// not once every day the same projected low point is still in the window.
+model CashFlowAlertSent {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  alertDate DateTime @map("alert_date") @db.Date
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  @@unique([userId, alertDate])
+  @@map("cash_flow_alerts_sent")
+}
+
+model SavingsGoal {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  name       String
+  targetAmount Decimal @map("target_amount") @db.Decimal(14, 2)
+  targetDate DateTime? @map("target_date") @db.Date
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions SavingsContribution[]
+
+  @@index([userId])
+  @@map("savings_goals")
+}
+
+// Manual contribution log, not derived from a linked account balance - a goal
+// isn't realistically "its own" Plaid account, so progress is self-reported
+// the same way Bill payments are.
+model SavingsContribution {
+  id     String   @id @default(uuid())
+  goalId String   @map("goal_id")
+  amount Decimal  @db.Decimal(14, 2)
+  date   DateTime @db.Date
+  note   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  goal SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@map("savings_contributions")
+}
+
+// A holding within a Plaid investment account - denormalized (no separate
+// Security table) to keep the sync loop in plaidSync.ts to one pass.
+model Holding {
+  id           String   @id @default(uuid())
+  accountId    String   @map("account_id")
+  securityId   String   @map("security_id")
+  symbol       String?
+  name         String
+  quantity     Decimal  @db.Decimal(20, 8)
+  costBasis    Decimal? @map("cost_basis") @db.Decimal(14, 2)
+  currentPrice Decimal? @map("current_price") @db.Decimal(14, 4)
+  currentValue Decimal? @map("current_value") @db.Decimal(14, 2)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, securityId])
+  @@map("holdings")
 }
 
 enum SubscriptionStatus {
@@ -333,6 +458,7 @@ model Account {
   plaidItem        PlaidItem         @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
   transactions     Transaction[]
   creditCardDetail CreditCardDetail?
+  holdings         Holding[]
 
   @@index([plaidItemId])
   @@map("accounts")
@@ -349,6 +475,9 @@ model CreditCardDetail {
   minimumPaymentAmount    Decimal?  @map("minimum_payment_amount") @db.Decimal(14, 2)
   nextPaymentDueDate      DateTime? @map("next_payment_due_date") @db.Date
   lastPaymentAmount       Decimal?  @map("last_payment_amount") @db.Decimal(14, 2)
+  // From Plaid's card.aprs (the purchase_apr entry) - powers the debt payoff
+  // planner's interest simulation. Null for cards Plaid doesn't report an APR for.
+  aprPercentage           Decimal?  @map("apr_percentage") @db.Decimal(5, 2)
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)

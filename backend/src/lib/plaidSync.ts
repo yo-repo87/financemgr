@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { decryptField } from "./crypto";
 import { logger } from "./logger";
 import { matchTransactionsToBills } from "./billMatching";
+import { normalizeMerchantKey } from "./subscriptionDetection";
 
 // Plaid gives last_statement_issue_date but not a guaranteed forward-looking closing
 // date, so we estimate the next one as one statement cycle (~1 calendar month) later.
@@ -82,6 +83,9 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
   }
 
   // --- Transactions (cursor-based sync) ---
+  const overrides = await prisma.categoryOverride.findMany({ where: { userId: item.userId } });
+  const overrideByMerchant = new Map(overrides.map((o) => [o.merchantKey, o.category]));
+
   let cursor = item.cursor ?? undefined;
   let hasMore = true;
   while (hasMore) {
@@ -91,6 +95,11 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
     for (const txn of [...added, ...modified]) {
       const account = await prisma.account.findUnique({ where: { plaidAccountId: txn.account_id } });
       if (!account) continue;
+      const plaidCategory = txn.personal_finance_category?.primary ?? txn.category?.[0] ?? undefined;
+      // A user's own category correction (see routes/transactions.ts PATCH
+      // /:id/category) wins over Plaid's auto-categorization for future syncs
+      // from the same merchant.
+      const category = overrideByMerchant.get(normalizeMerchantKey(txn.merchant_name || txn.name)) ?? plaidCategory;
       await prisma.transaction.upsert({
         where: { plaidTransactionId: txn.transaction_id },
         create: {
@@ -101,14 +110,14 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
           date: new Date(txn.date),
           name: txn.name,
           merchantName: txn.merchant_name ?? undefined,
-          category: txn.personal_finance_category?.primary ?? txn.category?.[0] ?? undefined,
+          category,
           pending: txn.pending,
         },
         update: {
           amount: txn.amount,
           name: txn.name,
           merchantName: txn.merchant_name ?? undefined,
-          category: txn.personal_finance_category?.primary ?? txn.category?.[0] ?? undefined,
+          category,
           pending: txn.pending,
         },
       });

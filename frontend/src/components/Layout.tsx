@@ -9,6 +9,7 @@ const links = [
   { to: "/bills", label: "Bills" },
   { to: "/budgets", label: "Budgets" },
   { to: "/analytics", label: "Analytics" },
+  { to: "/cashflow", label: "Cash Flow" },
   { to: "/advisor", label: "Advisor" },
   { to: "/settings", label: "Settings" },
 ];
@@ -27,6 +28,7 @@ const tabLinks = [
 const moreLinks = [
   { to: "/budgets", label: "Budgets" },
   { to: "/analytics", label: "Analytics" },
+  { to: "/cashflow", label: "Cash Flow" },
   { to: "/advisor", label: "Advisor" },
   { to: "/settings", label: "Settings" },
 ];

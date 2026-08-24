@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/format";
 
@@ -33,10 +33,30 @@ function RecurringBadge() {
 }
 
 export default function Transactions() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, category }: { id: string; category: string }) =>
+      api.patch(`/api/transactions/${id}/category`, { category }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transaction-categories"] });
+    },
+  });
+
+  function editCategory(t: Transaction) {
+    const next = window.prompt(
+      `Category for "${t.merchantName || t.name}" (applies to future charges from this merchant too):`,
+      t.category || ""
+    );
+    if (next && next.trim() && next.trim() !== t.category) {
+      updateCategoryMutation.mutate({ id: t.id, category: next.trim() });
+    }
+  }
 
   const { data: categories } = useQuery<string[]>({
     queryKey: ["transaction-categories"],
@@ -135,7 +155,12 @@ export default function Transactions() {
                 <p className="text-xs text-slate-400 mt-0.5">
                   {formatDate(t.date)} · {t.account.name} •••• {t.account.mask}
                 </p>
-                <p className="text-xs text-slate-400">{t.category || "Uncategorized"}</p>
+                <button
+                  onClick={() => editCategory(t)}
+                  className="text-xs text-slate-400 underline decoration-dotted underline-offset-2"
+                >
+                  {t.category || "Uncategorized"}
+                </button>
               </div>
               <p className={`text-sm font-medium whitespace-nowrap ${Number(t.amount) > 0 ? "text-slate-900" : "text-emerald-600"}`}>
                 {formatCurrency(t.amount)}
@@ -176,7 +201,14 @@ export default function Transactions() {
                 <td className="px-4 py-2 text-slate-500">
                   {t.account.name} •••• {t.account.mask}
                 </td>
-                <td className="px-4 py-2 text-slate-500">{t.category || "Uncategorized"}</td>
+                <td className="px-4 py-2 text-slate-500">
+                  <button
+                    onClick={() => editCategory(t)}
+                    className="underline decoration-dotted underline-offset-2 hover:text-slate-900"
+                  >
+                    {t.category || "Uncategorized"}
+                  </button>
+                </td>
                 <td className={`px-4 py-2 text-right font-medium ${Number(t.amount) > 0 ? "text-slate-900" : "text-emerald-600"}`}>
                   {formatCurrency(t.amount)}
                 </td>

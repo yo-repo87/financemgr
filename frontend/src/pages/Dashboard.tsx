@@ -1,9 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { api } from "../lib/api";
 import { formatCurrency, formatCompactCurrency, formatDate } from "../lib/format";
 import { chrome, sequentialBlue, status } from "../lib/chartTheme";
 import { fetchUpcomingBills, UpcomingBill } from "../lib/bills";
+
+interface Forecast {
+  lowestBalance: number;
+  lowestBalanceDate: string;
+  threshold: number;
+}
 
 interface Account {
   id: string;
@@ -31,6 +38,10 @@ export default function Dashboard() {
   const { data: upcomingBills } = useQuery<UpcomingBill[]>({
     queryKey: ["bills-upcoming"],
     queryFn: () => fetchUpcomingBills(30),
+  });
+  const { data: forecast } = useQuery<Forecast>({
+    queryKey: ["cashflow-forecast"],
+    queryFn: () => api.get("/api/cashflow/forecast", { params: { days: 30 } }).then((r) => r.data),
   });
 
   const netWorth = (accounts ?? []).reduce((sum, a) => {
@@ -67,6 +78,27 @@ export default function Dashboard() {
           </ul>
         )}
       </div>
+
+      <Link to="/cashflow" className="block bg-white rounded-lg border p-4 sm:p-6 hover:border-slate-300">
+        <h2 className="text-sm font-medium text-slate-700 mb-1">Cash flow</h2>
+        {!forecast ? (
+          <p className="text-sm text-slate-400 mt-3">Not enough data yet.</p>
+        ) : (
+          <div className="flex items-center justify-between mt-2">
+            <div>
+              <p className="text-xs text-slate-500">Lowest projected (30d)</p>
+              <p
+                className={`text-xl font-semibold mt-0.5 ${
+                  forecast.lowestBalance < forecast.threshold ? "text-red-600" : "text-slate-900"
+                }`}
+              >
+                {formatCurrency(forecast.lowestBalance)}
+              </p>
+            </div>
+            <p className="text-xs text-slate-400">{formatDate(forecast.lowestBalanceDate)}</p>
+          </div>
+        )}
+      </Link>
 
       <div className="bg-white rounded-lg border p-4 sm:p-6">
         <h2 className="text-sm font-medium text-slate-700 mb-4">Net worth over time</h2>
