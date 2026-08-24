@@ -85,6 +85,42 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
     logger.warn({ err, itemId: item.id }, "Liabilities fetch failed, continuing sync");
   }
 
+  // --- Investment holdings (only relevant for items linked with the
+  // Investments product - older items linked before it was added won't have
+  // it and this call will fail for them, which is expected, not an error). ---
+  try {
+    const holdingsResp = await plaidClient.investmentsHoldingsGet({ access_token: accessToken });
+    const securityById = new Map(holdingsResp.data.securities.map((s) => [s.security_id, s]));
+    for (const holding of holdingsResp.data.holdings) {
+      const account = await prisma.account.findUnique({ where: { plaidAccountId: holding.account_id } });
+      if (!account) continue;
+      const security = securityById.get(holding.security_id);
+      await prisma.holding.upsert({
+        where: { accountId_securityId: { accountId: account.id, securityId: holding.security_id } },
+        create: {
+          accountId: account.id,
+          securityId: holding.security_id,
+          symbol: security?.ticker_symbol ?? undefined,
+          name: security?.name ?? "Unknown security",
+          quantity: holding.quantity,
+          costBasis: holding.cost_basis ?? undefined,
+          currentPrice: holding.institution_price,
+          currentValue: holding.institution_value,
+        },
+        update: {
+          symbol: security?.ticker_symbol ?? undefined,
+          name: security?.name ?? "Unknown security",
+          quantity: holding.quantity,
+          costBasis: holding.cost_basis ?? undefined,
+          currentPrice: holding.institution_price,
+          currentValue: holding.institution_value,
+        },
+      });
+    }
+  } catch (err) {
+    logger.warn({ err, itemId: item.id }, "Investment holdings fetch failed, continuing sync");
+  }
+
   // --- Transactions (cursor-based sync) ---
   const overrides = await prisma.categoryOverride.findMany({ where: { userId: item.userId } });
   const overrideByMerchant = new Map(overrides.map((o) => [o.merchantKey, o.category]));

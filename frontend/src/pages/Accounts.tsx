@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { api } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/format";
+import { categorical } from "../lib/chartTheme";
 import PlaidLinkButton from "../components/PlaidLinkButton";
 
 interface CreditCardDetail {
@@ -9,6 +12,16 @@ interface CreditCardDetail {
   lastStatementBalance: string | null;
   minimumPaymentAmount: string | null;
   nextPaymentDueDate: string | null;
+}
+
+interface Holding {
+  id: string;
+  symbol: string | null;
+  name: string;
+  quantity: string;
+  costBasis: string | null;
+  currentPrice: string | null;
+  currentValue: string | null;
 }
 
 interface Account {
@@ -21,7 +34,66 @@ interface Account {
   availableBalance: string | null;
   creditLimit: string | null;
   creditCardDetail: CreditCardDetail | null;
+  holdings: Holding[];
   plaidItem: { institutionName: string | null };
+}
+
+// Fixed categorical order per the dataviz palette - top 7 holdings by value
+// keep their slot, everything past that folds into "Other" (slot 8, reserved).
+function foldHoldings(holdings: Holding[]): { name: string; value: number }[] {
+  const sorted = [...holdings].sort((a, b) => Number(b.currentValue ?? 0) - Number(a.currentValue ?? 0));
+  const top = sorted.slice(0, 7).map((h) => ({ name: h.symbol || h.name, value: Number(h.currentValue ?? 0) }));
+  if (sorted.length <= 7) return top;
+  const rest = sorted.slice(7).reduce((sum, h) => sum + Number(h.currentValue ?? 0), 0);
+  return [...top, { name: "Other", value: rest }];
+}
+
+function HoldingsSection({ holdings }: { holdings: Holding[] }) {
+  const pieData = foldHoldings(holdings);
+  return (
+    <div className="mt-2">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 divide-y">
+          {holdings.map((h) => {
+            const value = Number(h.currentValue ?? 0);
+            const cost = h.costBasis != null ? Number(h.costBasis) : null;
+            const gainLoss = cost != null ? value - cost : null;
+            return (
+              <div key={h.id} className="py-2 flex items-center justify-between text-xs">
+                <div>
+                  <p className="font-medium text-slate-900">{h.symbol || h.name}</p>
+                  <p className="text-slate-400">{Number(h.quantity)} shares</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-slate-900">{formatCurrency(value)}</p>
+                  {gainLoss !== null && (
+                    <p className={gainLoss >= 0 ? "text-emerald-600" : "text-red-600"}>
+                      {gainLoss >= 0 ? "+" : ""}
+                      {formatCurrency(gainLoss)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {pieData.length > 1 && (
+          <div className="w-full sm:w-40 h-40 shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={35} outerRadius={60} paddingAngle={2}>
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={categorical[i % categorical.length]} stroke="#fff" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 interface PlaidItem {
@@ -33,6 +105,17 @@ interface PlaidItem {
 
 export default function Accounts() {
   const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggleExpanded(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   const { data: accounts } = useQuery<Account[]>({
     queryKey: ["accounts"],
     queryFn: () => api.get("/api/accounts").then((r) => r.data),
@@ -134,6 +217,19 @@ export default function Accounts() {
                   <span className="text-slate-400">(estimate — Plaid does not guarantee this date)</span>
                 </p>
               </div>
+            )}
+
+            {a.holdings.length > 0 && (
+              <>
+                <button
+                  onClick={() => toggleExpanded(a.id)}
+                  className="mt-3 pt-3 border-t w-full text-left text-xs font-medium text-slate-500 flex items-center justify-between"
+                >
+                  <span>{a.holdings.length} holding{a.holdings.length === 1 ? "" : "s"}</span>
+                  <span>{expanded.has(a.id) ? "Hide" : "Show"}</span>
+                </button>
+                {expanded.has(a.id) && <HoldingsSection holdings={a.holdings} />}
+              </>
             )}
           </div>
         ))}

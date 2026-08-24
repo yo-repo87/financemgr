@@ -10,7 +10,11 @@ accountsRouter.get("/", async (req: AuthedRequest, res, next) => {
   try {
     const accounts = await prisma.account.findMany({
       where: { plaidItem: { userId: req.userId! } },
-      include: { creditCardDetail: true, plaidItem: { select: { institutionName: true } } },
+      include: {
+        creditCardDetail: true,
+        plaidItem: { select: { institutionName: true } },
+        holdings: { orderBy: { currentValue: "desc" } },
+      },
       orderBy: { name: "asc" },
     });
     res.json(accounts);

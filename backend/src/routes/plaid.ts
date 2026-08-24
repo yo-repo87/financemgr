@@ -26,7 +26,10 @@ plaidRouter.post("/link-token", async (req: AuthedRequest, res, next) => {
     const resp = await plaidClient.linkTokenCreate({
       user: { client_user_id: req.userId! },
       client_name: "FinanceMgr",
-      products: [Products.Transactions, Products.Liabilities],
+      // Investments only applies to newly-linked accounts - existing
+      // connections need to be re-linked (Plaid Link update mode) to grant
+      // this product, since Plaid can't retroactively add scopes to a token.
+      products: [Products.Transactions, Products.Liabilities, Products.Investments],
       country_codes: [CountryCode.Us],
       language: "en",
     });
