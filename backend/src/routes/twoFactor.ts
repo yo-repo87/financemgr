@@ -13,6 +13,7 @@ import { requireAuth, AuthedRequest } from "../middleware/auth";
 import { requirePendingTwoFactor, PendingTwoFactorRequest } from "../middleware/pendingTwoFactor";
 import { authRateLimiter } from "../middleware/rateLimiter";
 import { accountHasTwoFactor } from "./webauthn";
+import { buildUserResponse } from "../lib/userResponse";
 
 export const twoFactorRouter = Router();
 
@@ -117,8 +118,7 @@ async function completeLogin(res: import("express").Response, userId: string) {
   const refreshToken = await issueRefreshToken(userId);
   setAuthCookies(res, accessToken, refreshToken);
   clearPendingTwoFactorCookie(res);
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  return { id: user!.id, email: user!.email };
+  return buildUserResponse(userId);
 }
 
 twoFactorRouter.post(

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import PasskeyManager from "../components/PasskeyManager";
 import TwoFactorManager from "../components/TwoFactorManager";
+import SecurityQuestionsManager from "../components/SecurityQuestionsManager";
 
 interface AiSettings {
   hasKey: boolean;
@@ -102,6 +103,7 @@ export default function Settings() {
         <div className="space-y-6">
           <PasskeyManager />
           <TwoFactorManager />
+          <SecurityQuestionsManager />
         </div>
       )}
     </div>

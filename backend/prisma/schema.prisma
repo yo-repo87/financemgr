@@ -22,8 +22,26 @@ model User {
   webauthnCredentials WebAuthnCredential[]
   twoFactorSetting  TwoFactorSetting?
   backupCodes       BackupCode[]
+  securityQuestions SecurityQuestion[]
 
   @@map("users")
+}
+
+// questionId references the fixed pool in backend/src/lib/securityQuestions.ts,
+// not a DB row - the pool is small, curated, and shared by every user so the
+// password-reset flow can serve indistinguishable decoy questions for unknown
+// emails (see backend/src/routes/passwordReset.ts).
+model SecurityQuestion {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  questionId String   @map("question_id")
+  answerHash String   @map("answer_hash")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@map("security_questions")
 }
 
 enum CredentialPurpose {

@@ -1,5 +1,6 @@
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import { api } from "./api";
+import type { User } from "./auth";
 
 export type CredentialPurpose = "PASSKEY" | "SECOND_FACTOR";
 
@@ -16,7 +17,7 @@ export async function loginWithPasskey() {
   const { data: optionsJSON } = await api.post("/api/auth/webauthn/login/options");
   const response = await startAuthentication({ optionsJSON });
   const { data } = await api.post("/api/auth/webauthn/login/verify", { response });
-  return data as { id: string; email: string };
+  return data as User;
 }
 
 // Second-factor challenge during a password login that requires 2FA.
@@ -24,5 +25,5 @@ export async function verifyWebAuthnSecondFactor() {
   const { data: optionsJSON } = await api.post("/api/auth/2fa/webauthn/options");
   const response = await startAuthentication({ optionsJSON });
   const { data } = await api.post("/api/auth/2fa/webauthn/verify", { response });
-  return data as { id: string; email: string };
+  return data as User;
 }

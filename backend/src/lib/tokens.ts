@@ -8,6 +8,8 @@ import { hashToken } from "./crypto";
 const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_2FA_TTL_MS = 5 * 60 * 1000;
+const RESET_SESSION_TTL_MS = 10 * 60 * 1000;
+const RESET_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 const isProd = env.nodeEnv === "production";
 
@@ -67,4 +69,66 @@ export function verifyPendingTwoFactorToken(token: string): string | null {
   } catch {
     return null;
   }
+}
+
+export interface ResetSessionPayload {
+  uid: string | null;
+  questionIds: string[];
+}
+
+// Issued after /password-reset/start. uid is null for a nonexistent-email
+// request (decoy questions), so verify-answers can always fail generically
+// without a code path that would let a real vs. fake account be distinguished.
+export function setResetSessionCookie(res: Response, payload: ResetSessionPayload) {
+  const token = jwt.sign({ ...payload, typ: "password_reset_session" }, env.jwtSecret, { expiresIn: "10m" });
+  res.cookie("reset_session", token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "strict",
+    path: "/api/auth/password-reset",
+    maxAge: RESET_SESSION_TTL_MS,
+  });
+}
+
+export function clearResetSessionCookie(res: Response) {
+  res.clearCookie("reset_session", { path: "/api/auth/password-reset" });
+}
+
+export function verifyResetSessionToken(token: string): ResetSessionPayload | null {
+  try {
+    const payload = jwt.verify(token, env.jwtSecret) as ResetSessionPayload & { typ: string };
+    return payload.typ === "password_reset_session" ? { uid: payload.uid, questionIds: payload.questionIds } : null;
+  } catch {
+    return null;
+  }
+}
+
+// Issued after verify-answers succeeds - proves the question challenge passed,
+// separate from reset_session so a stale session token can't be replayed to skip it.
+export function setPasswordResetTokenCookie(res: Response, userId: string) {
+  const token = jwt.sign({ sub: userId, typ: "password_reset" }, env.jwtSecret, { expiresIn: "10m" });
+  res.cookie("password_reset_token", token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "strict",
+    path: "/api/auth/password-reset",
+    maxAge: RESET_TOKEN_TTL_MS,
+  });
+}
+
+export function clearPasswordResetTokenCookie(res: Response) {
+  res.clearCookie("password_reset_token", { path: "/api/auth/password-reset" });
+}
+
+export function verifyPasswordResetToken(token: string): string | null {
+  try {
+    const payload = jwt.verify(token, env.jwtSecret) as { sub: string; typ: string };
+    return payload.typ === "password_reset" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function revokeAllRefreshTokens(userId: string): Promise<void> {
+  await prisma.refreshToken.updateMany({ where: { userId, revoked: false }, data: { revoked: true } });
 }

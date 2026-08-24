@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { loginWithPasskey, verifyWebAuthnSecondFactor } from "../lib/webauthn";
@@ -9,6 +9,8 @@ type Step = "password" | "totp" | "backup_code";
 export default function Login() {
   const { login, completeLogin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const passwordResetSuccess = Boolean((location.state as { passwordResetSuccess?: boolean } | null)?.passwordResetSuccess);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -133,6 +135,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="bg-white p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
         <h1 className="text-xl font-semibold text-slate-900">Sign in to FinanceMgr</h1>
+        {passwordResetSuccess && (
+          <p className="text-sm text-emerald-600">Password reset. Please sign in with your new password.</p>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
@@ -162,7 +167,12 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-slate-700">Password</label>
+              <Link to="/forgot-password" className="text-xs text-slate-500 hover:text-slate-900">
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               required

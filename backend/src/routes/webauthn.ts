@@ -12,6 +12,7 @@ import { setChallengeCookie, readChallengeCookie, clearChallengeCookie } from ".
 import { signAccessToken, issueRefreshToken, setAuthCookies } from "../lib/tokens";
 import { regenerateBackupCodes } from "../lib/backupCodes";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
+import { buildUserResponse } from "../lib/userResponse";
 
 export const webauthnRouter = Router();
 
@@ -150,8 +151,7 @@ webauthnRouter.post("/login/verify", async (req, res, next) => {
     const refreshToken = await issueRefreshToken(stored.userId);
     setAuthCookies(res, accessToken, refreshToken);
 
-    const user = await prisma.user.findUnique({ where: { id: stored.userId } });
-    res.json({ id: user!.id, email: user!.email });
+    res.json(await buildUserResponse(stored.userId));
   } catch (err) {
     next(err);
   }

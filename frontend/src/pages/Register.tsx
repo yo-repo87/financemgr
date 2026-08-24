@@ -16,7 +16,7 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register(email, password);
-      navigate("/security-setup");
+      navigate("/security-questions-setup");
     } catch (err: any) {
       setError(err?.response?.data?.error || "Registration failed");
     } finally {

@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api } from "./api";
 
-interface User {
+export interface User {
   id: string;
   email: string;
+  hasSecurityQuestions: boolean;
 }
 
 export type LoginResult = { requiresTwoFactor: true; methods: string[] } | { requiresTwoFactor: false };

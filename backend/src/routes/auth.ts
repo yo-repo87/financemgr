@@ -13,6 +13,7 @@ import {
 import { authRateLimiter } from "../middleware/rateLimiter";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
 import { accountHasTwoFactor } from "./webauthn";
+import { buildUserResponse } from "../lib/userResponse";
 
 export const authRouter = Router();
 
@@ -35,7 +36,7 @@ authRouter.post("/register", authRateLimiter, async (req, res, next) => {
     const refreshToken = await issueRefreshToken(user.id);
     setAuthCookies(res, accessToken, refreshToken);
 
-    res.status(201).json({ id: user.id, email: user.email });
+    res.status(201).json(await buildUserResponse(user.id));
   } catch (err) {
     next(err);
   }
@@ -68,7 +69,7 @@ authRouter.post("/login", authRateLimiter, async (req, res, next) => {
     const refreshToken = await issueRefreshToken(user.id);
     setAuthCookies(res, accessToken, refreshToken);
 
-    res.json({ id: user.id, email: user.email });
+    res.json(await buildUserResponse(user.id));
   } catch (err) {
     next(err);
   }
@@ -112,9 +113,7 @@ authRouter.post("/logout", async (req, res, next) => {
 
 authRouter.get("/me", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: req.userId! } });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    res.json({ id: user.id, email: user.email });
+    res.json(await buildUserResponse(req.userId!));
   } catch (err) {
     next(err);
   }
