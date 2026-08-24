@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import PasskeyManager from "../components/PasskeyManager";
 import TwoFactorManager from "../components/TwoFactorManager";
 import SecurityQuestionsManager from "../components/SecurityQuestionsManager";
@@ -155,10 +156,131 @@ function NotificationSettingsPanel() {
   );
 }
 
+function AccountDataPanel() {
+  const { user, logout } = useAuth();
+  const [exporting, setExporting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [emailConfirm, setEmailConfirm] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.delete("/api/account", { data: { email: emailConfirm, password: password || undefined } }),
+    onSuccess: async () => {
+      await logout();
+      window.location.href = "/login";
+    },
+    onError: (err: any) => setError(err?.response?.data?.error || "Could not delete account"),
+  });
+
+  async function exportData() {
+    setExporting(true);
+    try {
+      const res = await api.get("/api/account/export", { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "financemgr-export.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function onDeleteSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (emailConfirm.trim().toLowerCase() === user?.email.toLowerCase()) deleteMutation.mutate();
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg border p-6 space-y-3">
+        <div>
+          <h2 className="text-sm font-medium text-slate-700">Export your data</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Download a JSON file of your accounts, transactions, budgets, bills, subscriptions, savings goals, and
+            Advisor conversations. Credentials (passwords, linked-bank tokens, 2FA secrets) are never included.
+          </p>
+        </div>
+        <button
+          onClick={exportData}
+          disabled={exporting}
+          className="bg-slate-900 text-white rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+        >
+          {exporting ? "Preparing..." : "Export my data"}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg border border-red-200 p-6 space-y-3">
+        <div>
+          <h2 className="text-sm font-medium text-red-700">Delete account</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Permanently deletes your account and all associated data - linked banks, transactions, bills, goals,
+            everything. This cannot be undone.
+          </p>
+        </div>
+
+        {!confirmOpen ? (
+          <button
+            onClick={() => setConfirmOpen(true)}
+            className="border border-red-300 text-red-600 rounded-md px-4 py-2 text-sm font-medium"
+          >
+            Delete my account
+          </button>
+        ) : (
+          <form onSubmit={onDeleteSubmit} className="space-y-3">
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">
+                Type your email ({user?.email}) to confirm
+              </label>
+              <input
+                value={emailConfirm}
+                onChange={(e) => setEmailConfirm(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={deleteMutation.isPending || emailConfirm.trim().toLowerCase() !== user?.email.toLowerCase()}
+                className="bg-red-600 text-white rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Permanently delete my account"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="text-sm text-slate-500 px-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const tabs = [
   { id: "advisor", label: "AI Advisor" },
   { id: "security", label: "Security" },
   { id: "notifications", label: "Notifications" },
+  { id: "account", label: "Account" },
 ] as const;
 
 export default function Settings() {
@@ -191,6 +313,7 @@ export default function Settings() {
         </div>
       )}
       {tab === "notifications" && <NotificationSettingsPanel />}
+      {tab === "account" && <AccountDataPanel />}
     </div>
   );
 }
