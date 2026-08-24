@@ -29,6 +29,9 @@ export const env = {
   // stored with literal "\n" escapes and unescaped here - standard convention
   // for shipping a private key through an env var.
   applePrivateKey: (process.env.APPLE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY || "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || "",
+  vapidSubject: process.env.VAPID_SUBJECT || "",
 };
 
 export const plaidConfigured = Boolean(env.plaidClientId && env.plaidSecret);
@@ -36,3 +39,4 @@ export const googleOAuthConfigured = Boolean(env.googleClientId && env.googleCli
 export const appleOAuthConfigured = Boolean(
   env.appleClientId && env.appleTeamId && env.appleKeyId && env.applePrivateKey
 );
+export const pushConfigured = Boolean(env.vapidPublicKey && env.vapidPrivateKey && env.vapidSubject);

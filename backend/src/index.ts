@@ -18,9 +18,11 @@ import { accountsRouter } from "./routes/accounts";
 import { transactionsRouter } from "./routes/transactions";
 import { budgetsRouter } from "./routes/budgets";
 import { billsRouter } from "./routes/bills";
+import { notificationsRouter } from "./routes/notifications";
 import { analyticsRouter } from "./routes/analytics";
 import { aiRouter } from "./routes/ai";
 import { startSyncJob } from "./jobs/sync";
+import { startBillReminderJob } from "./jobs/billReminders";
 
 const app = express();
 
@@ -67,6 +69,7 @@ app.use("/api/accounts", accountsRouter);
 app.use("/api/transactions", transactionsRouter);
 app.use("/api/budgets", budgetsRouter);
 app.use("/api/bills", billsRouter);
+app.use("/api/notifications", notificationsRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/ai", aiRouter);
 
@@ -75,4 +78,5 @@ app.use(errorHandler);
 app.listen(env.port, () => {
   logger.info(`FinanceMgr backend listening on :${env.port} (${env.nodeEnv})`);
   startSyncJob();
+  startBillReminderJob();
 });

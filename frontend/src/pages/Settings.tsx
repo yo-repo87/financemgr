@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import PasskeyManager from "../components/PasskeyManager";
 import TwoFactorManager from "../components/TwoFactorManager";
 import SecurityQuestionsManager from "../components/SecurityQuestionsManager";
+import { subscribeToPush, isPushSupported } from "../lib/push";
 
 interface AiSettings {
   hasKey: boolean;
@@ -72,9 +73,92 @@ function AiAdvisorSettings() {
   );
 }
 
+interface NotificationSettings {
+  pushEnabled: boolean;
+  subscriptionCount: number;
+}
+
+function NotificationSettingsPanel() {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const [enabling, setEnabling] = useState(false);
+
+  const { data: settings } = useQuery<NotificationSettings>({
+    queryKey: ["notification-settings"],
+    queryFn: () => api.get("/api/notifications/settings").then((r) => r.data),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (pushEnabled: boolean) => api.put("/api/notifications/settings", { pushEnabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification-settings"] }),
+  });
+
+  async function enableOnThisDevice() {
+    setError(null);
+    setEnabling(true);
+    try {
+      await subscribeToPush();
+      queryClient.invalidateQueries({ queryKey: ["notification-settings"] });
+    } catch (err: any) {
+      setError(err?.message || "Could not enable notifications");
+    } finally {
+      setEnabling(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg border p-6 space-y-4">
+      <div>
+        <h2 className="text-sm font-medium text-slate-700">Push notifications</h2>
+        <p className="text-xs text-slate-400 mt-1">
+          Payment reminders and other important alerts, sent even when the app isn't open.
+        </p>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-slate-700">Notifications enabled</span>
+        <button
+          role="switch"
+          aria-checked={settings?.pushEnabled ?? false}
+          onClick={() => toggleMutation.mutate(!(settings?.pushEnabled ?? true))}
+          disabled={!settings || toggleMutation.isPending}
+          className={`w-11 h-6 rounded-full transition-colors relative disabled:opacity-50 ${
+            settings?.pushEnabled ? "bg-slate-900" : "bg-slate-200"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+              settings?.pushEnabled ? "translate-x-5" : ""
+            }`}
+          />
+        </button>
+      </div>
+
+      {settings && settings.subscriptionCount === 0 && isPushSupported() && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-slate-400 mb-2">This device isn't subscribed yet.</p>
+          <button
+            onClick={enableOnThisDevice}
+            disabled={enabling}
+            className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded-md disabled:opacity-50"
+          >
+            {enabling ? "Requesting permission..." : "Enable on this device"}
+          </button>
+        </div>
+      )}
+      {settings && !isPushSupported() && (
+        <p className="text-xs text-slate-400">Push notifications aren't supported in this browser.</p>
+      )}
+    </div>
+  );
+}
+
 const tabs = [
   { id: "advisor", label: "AI Advisor" },
   { id: "security", label: "Security" },
+  { id: "notifications", label: "Notifications" },
 ] as const;
 
 export default function Settings() {
@@ -106,6 +190,7 @@ export default function Settings() {
           <SecurityQuestionsManager />
         </div>
       )}
+      {tab === "notifications" && <NotificationSettingsPanel />}
     </div>
   );
 }

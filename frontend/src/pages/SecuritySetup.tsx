@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerWebAuthnCredential } from "../lib/webauthn";
+import { subscribeToPush, isPushSupported } from "../lib/push";
 import TwoFactorManager from "../components/TwoFactorManager";
 
 export default function SecuritySetup() {
@@ -9,6 +10,8 @@ export default function SecuritySetup() {
   const [addingPasskey, setAddingPasskey] = useState(false);
   const [passkeyAdded, setPasskeyAdded] = useState(false);
   const [showTwoFactor, setShowTwoFactor] = useState(false);
+  const [enablingPush, setEnablingPush] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
 
   async function addPasskey() {
     setError(null);
@@ -21,6 +24,19 @@ export default function SecuritySetup() {
       setError(err?.response?.data?.error || "Could not register that passkey/security key");
     } finally {
       setAddingPasskey(false);
+    }
+  }
+
+  async function enablePush() {
+    setError(null);
+    setEnablingPush(true);
+    try {
+      await subscribeToPush();
+      setPushEnabled(true);
+    } catch (err: any) {
+      setError(err?.message || "Could not enable notifications");
+    } finally {
+      setEnablingPush(false);
     }
   }
 
@@ -72,9 +88,30 @@ export default function SecuritySetup() {
           </div>
         )}
 
+        {isPushSupported() && (
+          <div className="bg-white rounded-lg border p-6 space-y-3">
+            <h2 className="text-sm font-medium text-slate-700">Enable notifications</h2>
+            <p className="text-xs text-slate-400">
+              Get a push notification for payment reminders and other important alerts, even when the app isn't
+              open. You can turn this off anytime in Settings.
+            </p>
+            {pushEnabled ? (
+              <p className="text-sm text-emerald-600">Notifications enabled.</p>
+            ) : (
+              <button
+                onClick={enablePush}
+                disabled={enablingPush}
+                className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded-md disabled:opacity-50"
+              >
+                {enablingPush ? "Requesting permission..." : "Enable notifications"}
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="text-center">
           <button onClick={() => navigate("/")} className="text-sm text-slate-500 hover:text-slate-900">
-            {passkeyAdded || showTwoFactor ? "Continue" : "Skip for now"}
+            {passkeyAdded || showTwoFactor || pushEnabled ? "Continue" : "Skip for now"}
           </button>
         </div>
       </div>

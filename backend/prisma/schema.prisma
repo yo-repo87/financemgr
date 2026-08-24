@@ -29,8 +29,38 @@ model User {
   oauthAccounts     OAuthAccount[]
   bills             Bill[]
   billPayments      BillPayment[]
+  pushSubscriptions PushSubscription[]
+  notificationSetting NotificationSetting?
 
   @@map("users")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+// Master switch checked before sending to any of a user's subscriptions -
+// toggling this off/on doesn't touch browser permission state, so re-enabling
+// needs no re-subscribe (see backend/src/lib/push.ts).
+model NotificationSetting {
+  userId      String   @id @map("user_id")
+  pushEnabled Boolean  @default(true) @map("push_enabled")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
 }
 
 enum BillRecurrence {
@@ -61,11 +91,33 @@ model Bill {
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments BillPayment[]
+  reminders BillReminderSent[]
 
   @@index([userId])
   @@map("bills")
+}
+
+enum BillReminderKind {
+  UPCOMING
+  OVERDUE
+}
+
+// Guards the daily reminder job (backend/src/jobs/billReminders.ts) from
+// re-notifying the same cycle every time it runs - one row per (bill, cycle,
+// kind) ever sent, not per user, since a bill already scopes to one user.
+model BillReminderSent {
+  id      String           @id @default(uuid())
+  billId  String           @map("bill_id")
+  dueDate DateTime         @map("due_date") @db.Date
+  kind    BillReminderKind
+  sentAt  DateTime         @default(now()) @map("sent_at")
+
+  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@unique([billId, dueDate, kind])
+  @@map("bill_reminders_sent")
 }
 
 model BillPayment {
