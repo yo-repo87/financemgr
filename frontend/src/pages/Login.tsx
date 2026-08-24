@@ -1,8 +1,9 @@
 import { useState, FormEvent } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { loginWithPasskey, verifyWebAuthnSecondFactor } from "../lib/webauthn";
+import OAuthButtons from "../components/OAuthButtons";
 
 type Step = "password" | "totp" | "backup_code";
 
@@ -10,7 +11,9 @@ export default function Login() {
   const { login, completeLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const passwordResetSuccess = Boolean((location.state as { passwordResetSuccess?: boolean } | null)?.passwordResetSuccess);
+  const oauthError = searchParams.get("oauth_error") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -138,7 +141,10 @@ export default function Login() {
         {passwordResetSuccess && (
           <p className="text-sm text-emerald-600">Password reset. Please sign in with your new password.</p>
         )}
+        {oauthError && <p className="text-sm text-red-600">Sign-in failed, please try again.</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <OAuthButtons />
 
         <button
           type="button"

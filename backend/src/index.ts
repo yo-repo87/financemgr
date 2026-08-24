@@ -12,6 +12,7 @@ import { webauthnRouter } from "./routes/webauthn";
 import { twoFactorRouter } from "./routes/twoFactor";
 import { securityQuestionsRouter } from "./routes/securityQuestions";
 import { passwordResetRouter } from "./routes/passwordReset";
+import { oauthRouter } from "./routes/oauth";
 import { plaidRouter } from "./routes/plaid";
 import { accountsRouter } from "./routes/accounts";
 import { transactionsRouter } from "./routes/transactions";
@@ -47,6 +48,8 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
+// Apple's OAuth callback arrives as a form POST (response_mode=form_post).
+app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 app.use(cookieParser());
 app.use(pinoHttp({ logger }));
 
@@ -57,6 +60,7 @@ app.use("/api/auth/webauthn", webauthnRouter);
 app.use("/api/auth/2fa", twoFactorRouter);
 app.use("/api/auth/security-questions", securityQuestionsRouter);
 app.use("/api/auth/password-reset", passwordResetRouter);
+app.use("/api/auth/oauth", oauthRouter);
 app.use("/api/plaid", plaidRouter);
 app.use("/api/accounts", accountsRouter);
 app.use("/api/transactions", transactionsRouter);

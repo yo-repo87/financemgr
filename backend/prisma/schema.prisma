@@ -10,7 +10,10 @@ datasource db {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
-  passwordHash String   @map("password_hash")
+  // Nullable - an OAuth-only account (Google/Apple) has no password until the
+  // user optionally sets one later (the password-reset "complete" step doubles
+  // as "set a password" for such accounts, with no special-casing needed).
+  passwordHash String?  @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
 
   plaidItems        PlaidItem[]
@@ -23,8 +26,29 @@ model User {
   twoFactorSetting  TwoFactorSetting?
   backupCodes       BackupCode[]
   securityQuestions SecurityQuestion[]
+  oauthAccounts     OAuthAccount[]
 
   @@map("users")
+}
+
+enum OAuthProvider {
+  GOOGLE
+  APPLE
+}
+
+model OAuthAccount {
+  id                String        @id @default(uuid())
+  userId            String        @map("user_id")
+  provider          OAuthProvider
+  providerAccountId String        @map("provider_account_id")
+  email             String
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
 }
 
 // questionId references the fixed pool in backend/src/lib/securityQuestions.ts,

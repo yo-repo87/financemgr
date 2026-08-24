@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import OAuthButtons from "../components/OAuthButtons";
 
 export default function Register() {
   const { register } = useAuth();
@@ -26,9 +27,13 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <form onSubmit={onSubmit} className="bg-white p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
+      <div className="bg-white p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
         <h1 className="text-xl font-semibold text-slate-900">Create your account</h1>
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <OAuthButtons />
+
+        <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
           <input
@@ -58,10 +63,11 @@ export default function Register() {
         >
           {submitting ? "Creating account..." : "Create account"}
         </button>
+        </form>
         <p className="text-sm text-slate-500 text-center">
           Already have an account? <Link to="/login" className="text-slate-900 font-medium">Sign in</Link>
         </p>
-      </form>
+      </div>
     </div>
   );
 }

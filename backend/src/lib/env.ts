@@ -19,6 +19,20 @@ export const env = {
   webauthnRpId: process.env.WEBAUTHN_RP_ID || "localhost",
   webauthnRpName: process.env.WEBAUTHN_RP_NAME || "FinanceMgr",
   webauthnOrigin: process.env.WEBAUTHN_ORIGIN || "http://localhost:3140",
+  backendPublicUrl: process.env.BACKEND_PUBLIC_URL || "http://localhost:3141",
+  googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  appleClientId: process.env.APPLE_CLIENT_ID || "",
+  appleTeamId: process.env.APPLE_TEAM_ID || "",
+  appleKeyId: process.env.APPLE_KEY_ID || "",
+  // .env files can't hold real newlines inside an unquoted value, so the PEM is
+  // stored with literal "\n" escapes and unescaped here - standard convention
+  // for shipping a private key through an env var.
+  applePrivateKey: (process.env.APPLE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
 };
 
 export const plaidConfigured = Boolean(env.plaidClientId && env.plaidSecret);
+export const googleOAuthConfigured = Boolean(env.googleClientId && env.googleClientSecret);
+export const appleOAuthConfigured = Boolean(
+  env.appleClientId && env.appleTeamId && env.appleKeyId && env.applePrivateKey
+);

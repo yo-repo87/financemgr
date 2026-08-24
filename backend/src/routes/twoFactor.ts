@@ -83,13 +83,16 @@ twoFactorRouter.post("/totp/confirm", requireAuth, async (req: AuthedRequest, re
   }
 });
 
-const disableSchema = z.object({ password: z.string().min(1) });
+const disableSchema = z.object({ password: z.string().min(1).optional() });
 
 twoFactorRouter.post("/totp/disable", requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     const { password } = disableSchema.parse(req.body);
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
-    if (!user || !(await argon2.verify(user.passwordHash, password))) {
+    if (!user) return res.status(404).json({ error: "Not found" });
+    // OAuth-only accounts have no password to confirm - the authenticated session
+    // is the only factor they have.
+    if (user.passwordHash && !(password && (await argon2.verify(user.passwordHash, password)))) {
       return res.status(401).json({ error: "Incorrect password" });
     }
     await prisma.twoFactorSetting.update({

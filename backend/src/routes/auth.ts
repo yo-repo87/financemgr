@@ -46,8 +46,9 @@ authRouter.post("/login", authRateLimiter, async (req, res, next) => {
   try {
     const { email, password } = credentialsSchema.parse(req.body);
     const user = await prisma.user.findUnique({ where: { email } });
-    // Constant response shape whether the user exists or not, to avoid user enumeration.
-    if (!user || !(await argon2.verify(user.passwordHash, password))) {
+    // Constant response shape whether the user exists, has no password (OAuth-only
+    // account), or the password is wrong - none of those should be distinguishable.
+    if (!user || !user.passwordHash || !(await argon2.verify(user.passwordHash, password))) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 

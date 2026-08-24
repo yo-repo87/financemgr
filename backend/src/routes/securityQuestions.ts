@@ -68,7 +68,7 @@ securityQuestionsRouter.post("/", requireAuth, async (req: AuthedRequest, res, n
 });
 
 const changeSchema = z.object({
-  password: z.string().min(1),
+  password: z.string().min(1).optional(),
   questions: z.array(questionAnswerSchema).length(3),
 });
 
@@ -78,7 +78,10 @@ securityQuestionsRouter.put("/", requireAuth, async (req: AuthedRequest, res, ne
     assertDistinctQuestions(questions);
 
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
-    if (!user || !(await argon2.verify(user.passwordHash, password))) {
+    if (!user) return res.status(404).json({ error: "Not found" });
+    // OAuth-only accounts have no password to confirm - the authenticated session
+    // is the only factor they have, same reasoning as the TOTP-disable guard below.
+    if (user.passwordHash && !(password && (await argon2.verify(user.passwordHash, password)))) {
       return res.status(401).json({ error: "Incorrect password" });
     }
 

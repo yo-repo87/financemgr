@@ -51,6 +51,30 @@ All three run in Docker on a dedicated `financemgr-net` network via `docker-comp
      Advisor page, stored encrypted)
    - Set budgets, view Analytics, ask the Advisor questions
 
+## Adding Google/Apple sign-in later
+
+"Continue with Google" and "Continue with Apple" buttons exist on the Login and
+Register pages but only render when that provider's credentials are present in
+`.env` — leave a provider's block blank and its button simply doesn't appear,
+so there's never a dead/non-functional button on the page.
+
+- **Google**: create an OAuth client (Web application) at
+  https://console.cloud.google.com/apis/credentials, add
+  `{BACKEND_PUBLIC_URL}/api/auth/oauth/google/callback` as an authorized
+  redirect URI, then set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`.
+  Works fine with `BACKEND_PUBLIC_URL=http://localhost:3141` for local testing.
+- **Apple**: create a Services ID and a Sign in with Apple key at
+  https://developer.apple.com/account/resources, add
+  `{BACKEND_PUBLIC_URL}/api/auth/oauth/apple/callback` as the redirect URI, then
+  set `APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and
+  `APPLE_PRIVATE_KEY` (the downloaded `.p8` file's contents, with real newlines
+  replaced by literal `\n`) in `.env`. **Apple requires the redirect URI to be
+  HTTPS** — there's no `http://localhost` allowance like Google has — so Apple
+  sign-in specifically can't be tested until this app is behind real TLS (see
+  the nginx-proxy-manager note above).
+
+Either way: `docker compose up -d --build backend` to pick up the new env vars.
+
 ## Everyday commands
 
 ```bash
