@@ -31,8 +31,40 @@ model User {
   billPayments      BillPayment[]
   pushSubscriptions PushSubscription[]
   notificationSetting NotificationSetting?
+  detectedSubscriptions DetectedSubscription[]
 
   @@map("users")
+}
+
+enum SubscriptionStatus {
+  NEW
+  DISMISSED
+  TRACKED
+}
+
+// A candidate recurring subscription found by scanning transaction history
+// (backend/src/lib/subscriptionDetection.ts) - distinct from Bill, which is
+// something the user has already told the app about. Re-running detection
+// updates NEW rows in place but never touches one the user has already acted
+// on (DISMISSED/TRACKED), so their decision sticks.
+model DetectedSubscription {
+  id              String             @id @default(uuid())
+  userId          String             @map("user_id")
+  merchantKey     String             @map("merchant_key")
+  displayName     String             @map("display_name")
+  amount          Decimal            @db.Decimal(14, 2)
+  lastChargedDate DateTime           @map("last_charged_date") @db.Date
+  occurrenceCount Int                @map("occurrence_count")
+  status          SubscriptionStatus @default(NEW)
+  notifiedAt      DateTime?          @map("notified_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantKey])
+  @@index([userId])
+  @@map("detected_subscriptions")
 }
 
 model PushSubscription {

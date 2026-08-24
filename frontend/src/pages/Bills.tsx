@@ -15,6 +15,7 @@ import {
 } from "../lib/bills";
 import { formatCurrency, formatDate } from "../lib/format";
 import { status } from "../lib/chartTheme";
+import { DetectedSubscription, fetchSubscriptions, dismissSubscription, trackSubscription } from "../lib/subscriptions";
 
 const RECURRENCE_LABELS: Record<BillRecurrence, string> = {
   ONE_TIME: "One time",
@@ -204,6 +205,84 @@ function PaymentHistory({ billId }: { billId: string }) {
   );
 }
 
+function SubscriptionsPanel() {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: subscriptions } = useQuery<DetectedSubscription[]>({
+    queryKey: ["subscriptions"],
+    queryFn: fetchSubscriptions,
+  });
+
+  const trackMutation = useMutation({
+    mutationFn: (id: string) => trackSubscription(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+      queryClient.invalidateQueries({ queryKey: ["bills-upcoming"] });
+    },
+    onError: (err: any) => setError(err?.response?.data?.error || "Could not track subscription"),
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: (id: string) => dismissSubscription(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subscriptions"] }),
+    onError: (err: any) => setError(err?.response?.data?.error || "Could not dismiss subscription"),
+  });
+
+  const newSubs = (subscriptions ?? []).filter((s) => s.status === "NEW");
+  if (newSubs.length === 0) return null;
+
+  const trackedTotal = (subscriptions ?? [])
+    .filter((s) => s.status === "TRACKED" || s.status === "NEW")
+    .reduce((sum, s) => sum + Number(s.amount), 0);
+
+  return (
+    <div className="bg-white rounded-lg border p-4 space-y-3">
+      <div>
+        <h2 className="text-sm font-medium text-slate-700">Subscriptions we found</h2>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Detected from recurring charges in your synced transactions — {formatCurrency(trackedTotal)}/mo across{" "}
+          {newSubs.length + (subscriptions ?? []).filter((s) => s.status === "TRACKED").length} subscription
+          {newSubs.length + (subscriptions ?? []).filter((s) => s.status === "TRACKED").length === 1 ? "" : "s"}.
+        </p>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="divide-y">
+        {newSubs.map((s) => (
+          <div key={s.id} className="py-2.5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-slate-900">{s.displayName}</p>
+              <p className="text-xs text-slate-400">
+                ~monthly · charged {s.occurrenceCount} times · last {formatDate(s.lastChargedDate)}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <span className="text-sm font-medium text-slate-900">{formatCurrency(s.amount)}/mo</span>
+              <button
+                onClick={() => trackMutation.mutate(s.id)}
+                disabled={trackMutation.isPending}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                Track as bill
+              </button>
+              <button
+                onClick={() => dismissMutation.mutate(s.id)}
+                disabled={dismissMutation.isPending}
+                className="text-xs text-slate-500 hover:text-slate-900"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Bills() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -252,6 +331,8 @@ export default function Bills() {
           </button>
         )}
       </div>
+
+      <SubscriptionsPanel />
 
       {showForm && (
         <BillForm
