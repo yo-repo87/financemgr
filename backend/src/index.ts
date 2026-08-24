@@ -1,0 +1,64 @@
+import "dotenv/config";
+import express from "express";
+import helmet from "helmet";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import pinoHttp from "pino-http";
+import { env } from "./lib/env";
+import { logger } from "./lib/logger";
+import { errorHandler } from "./middleware/errorHandler";
+import { authRouter } from "./routes/auth";
+import { plaidRouter } from "./routes/plaid";
+import { accountsRouter } from "./routes/accounts";
+import { transactionsRouter } from "./routes/transactions";
+import { budgetsRouter } from "./routes/budgets";
+import { analyticsRouter } from "./routes/analytics";
+import { aiRouter } from "./routes/ai";
+import { startSyncJob } from "./jobs/sync";
+
+const app = express();
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    hsts: { maxAge: 31536000, includeSubDomains: true },
+  })
+);
+app.use(
+  cors({
+    origin: env.frontendUrl,
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
+app.use(pinoHttp({ logger }));
+
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+app.use("/api/auth", authRouter);
+app.use("/api/plaid", plaidRouter);
+app.use("/api/accounts", accountsRouter);
+app.use("/api/transactions", transactionsRouter);
+app.use("/api/budgets", budgetsRouter);
+app.use("/api/analytics", analyticsRouter);
+app.use("/api/ai", aiRouter);
+
+app.use(errorHandler);
+
+app.listen(env.port, () => {
+  logger.info(`FinanceMgr backend listening on :${env.port} (${env.nodeEnv})`);
+  startSyncJob();
+});

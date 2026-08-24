@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  plaidItems      PlaidItem[]
+  budgets         Budget[]
+  aiSetting       AiSetting?
+  aiMessages      AiMessage[]
+  refreshTokens   RefreshToken[]
+  balanceSnapshots BalanceSnapshot[]
+
+  @@map("users")
+}
+
+// One row per user per day, recorded whenever a Plaid sync completes, so the
+// analytics dashboard can chart real net-worth history as it accumulates over time.
+model BalanceSnapshot {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  date      DateTime @db.Date
+  netWorth  Decimal  @map("net_worth") @db.Decimal(14, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("balance_snapshots")
+}
+
+// Hashed refresh tokens so a stolen DB row can't be replayed as a session directly.
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revoked   Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PlaidItem {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  plaidItemId         String    @unique @map("plaid_item_id")
+  accessTokenEncrypted String   @map("access_token_encrypted")
+  institutionName     String?   @map("institution_name")
+  status              String    @default("active")
+  cursor              String?
+  lastSyncedAt        DateTime? @map("last_synced_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@index([userId])
+  @@map("plaid_items")
+}
+
+model Account {
+  id               String   @id @default(uuid())
+  plaidItemId      String   @map("plaid_item_id")
+  plaidAccountId   String   @unique @map("plaid_account_id")
+  name             String
+  mask             String?
+  type             String
+  subtype          String?
+  currentBalance   Decimal? @map("current_balance") @db.Decimal(14, 2)
+  availableBalance Decimal? @map("available_balance") @db.Decimal(14, 2)
+  creditLimit      Decimal? @map("credit_limit") @db.Decimal(14, 2)
+  isoCurrencyCode  String?  @map("iso_currency_code")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  plaidItem        PlaidItem         @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+  creditCardDetail CreditCardDetail?
+
+  @@index([plaidItemId])
+  @@map("accounts")
+}
+
+// Sourced from Plaid /liabilities/get. Plaid does not guarantee a forward-looking
+// "next closing date" field, so estimatedNextClosingDate is computed (last statement
+// issue date + ~1 statement cycle) and must be surfaced in the UI as an estimate.
+model CreditCardDetail {
+  accountId               String    @id @map("account_id")
+  lastStatementIssueDate  DateTime? @map("last_statement_issue_date") @db.Date
+  estimatedNextClosingDate DateTime? @map("estimated_next_closing_date") @db.Date
+  lastStatementBalance    Decimal?  @map("last_statement_balance") @db.Decimal(14, 2)
+  minimumPaymentAmount    Decimal?  @map("minimum_payment_amount") @db.Decimal(14, 2)
+  nextPaymentDueDate      DateTime? @map("next_payment_due_date") @db.Date
+  lastPaymentAmount       Decimal?  @map("last_payment_amount") @db.Decimal(14, 2)
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("credit_card_details")
+}
+
+model Transaction {
+  id                String   @id @default(uuid())
+  accountId         String   @map("account_id")
+  plaidTransactionId String  @unique @map("plaid_transaction_id")
+  amount            Decimal  @db.Decimal(14, 2)
+  isoCurrencyCode   String?  @map("iso_currency_code")
+  date              DateTime @db.Date
+  name              String
+  merchantName      String?  @map("merchant_name")
+  category          String?
+  pending           Boolean  @default(false)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, date])
+  @@index([category])
+  @@map("transactions")
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  category    String
+  monthlyLimit Decimal @map("monthly_limit") @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@map("budgets")
+}
+
+model AiSetting {
+  userId              String   @id @map("user_id")
+  openaiApiKeyEncrypted String? @map("openai_api_key_encrypted")
+  openaiKeyLastFour   String?  @map("openai_key_last_four")
+  modelPreference     String   @default("gpt-4o-mini") @map("model_preference")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_settings")
+}
+
+// Chat content is encrypted at rest since advisor conversations reference real balances/spending.
+model AiMessage {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  role             String
+  contentEncrypted String   @map("content_encrypted")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("ai_messages")
+}

@@ -1,0 +1,27 @@
+import pino from "pino";
+
+// Redact anything that could leak a credential or token into logs, even nested.
+export const logger = pino({
+  level: process.env.LOG_LEVEL || "info",
+  redact: {
+    paths: [
+      "req.headers.authorization",
+      "req.headers.cookie",
+      "*.password",
+      "*.passwordHash",
+      "*.password_hash",
+      "*.accessToken",
+      "*.access_token",
+      "*.accessTokenEncrypted",
+      "*.openaiApiKey",
+      "*.openaiApiKeyEncrypted",
+      "*.apiKey",
+      "*.api_key",
+      "*.token",
+      "*.refreshToken",
+      "*.ENCRYPTION_KEY",
+      "*.JWT_SECRET",
+    ],
+    censor: "[REDACTED]",
+  },
+});
