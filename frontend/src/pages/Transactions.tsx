@@ -11,19 +11,61 @@ interface Transaction {
   merchantName: string | null;
   category: string | null;
   pending: boolean;
+  isRecurring: boolean;
   account: { name: string; mask: string | null };
+}
+
+function RecurringBadge() {
+  return (
+    <span
+      title="Matches a detected recurring subscription - check for duplicate charges or a trial that converted"
+      className="inline-flex items-center gap-1 text-[11px] font-medium text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
+        <path d="M17 2.1l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M3 12.1v-2a4 4 0 0 1 4-4h14" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 21.9l-4-4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M21 11.9v2a4 4 0 0 1-4 4H3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      Subscription
+    </span>
+  );
 }
 
 export default function Transactions() {
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  const { data: categories } = useQuery<string[]>({
+    queryKey: ["transaction-categories"],
+    queryFn: () => api.get("/api/transactions/categories").then((r) => r.data),
+  });
 
   const { data: transactions } = useQuery<Transaction[]>({
-    queryKey: ["transactions", search],
+    queryKey: ["transactions", search, category, from, to],
     queryFn: () =>
       api
-        .get("/api/transactions", { params: { search: search || undefined, limit: 200 } })
+        .get("/api/transactions", {
+          params: {
+            search: search || undefined,
+            category: category || undefined,
+            from: from || undefined,
+            to: to || undefined,
+            limit: 200,
+          },
+        })
         .then((r) => r.data),
   });
+
+  const hasFilters = Boolean(search || category || from || to);
+  function clearFilters() {
+    setSearch("");
+    setCategory("");
+    setFrom("");
+    setTo("");
+  }
 
   return (
     <div className="space-y-4">
@@ -38,16 +80,58 @@ export default function Transactions() {
         />
       </div>
 
+      <div className="bg-white rounded-lg border p-3 flex flex-col sm:flex-row sm:items-end gap-3">
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-slate-500 mb-1">Category</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full border rounded-md px-3 py-2 sm:py-1.5 text-sm bg-white"
+          >
+            <option value="">All categories</option>
+            {(categories ?? []).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-slate-500 mb-1">From</label>
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="w-full border rounded-md px-3 py-2 sm:py-1.5 text-sm"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-slate-500 mb-1">To</label>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="w-full border rounded-md px-3 py-2 sm:py-1.5 text-sm"
+          />
+        </div>
+        {hasFilters && (
+          <button onClick={clearFilters} className="text-sm text-slate-500 hover:text-slate-900 sm:pb-1.5">
+            Clear filters
+          </button>
+        )}
+      </div>
+
       {/* Phone: card list */}
       <div className="md:hidden space-y-2">
         {(transactions ?? []).map((t) => (
           <div key={t.id} className="bg-white rounded-lg border p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">
-                  {t.merchantName || t.name}
-                  {t.pending && <span className="ml-2 text-xs text-amber-600">pending</span>}
-                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm font-medium text-slate-900 truncate">{t.merchantName || t.name}</p>
+                  {t.pending && <span className="text-xs text-amber-600">pending</span>}
+                  {t.isRecurring && <RecurringBadge />}
+                </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {formatDate(t.date)} · {t.account.name} •••• {t.account.mask}
                 </p>
@@ -83,8 +167,11 @@ export default function Transactions() {
               <tr key={t.id}>
                 <td className="px-4 py-2 text-slate-500">{formatDate(t.date)}</td>
                 <td className="px-4 py-2 text-slate-900">
-                  {t.merchantName || t.name}
-                  {t.pending && <span className="ml-2 text-xs text-amber-600">pending</span>}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span>{t.merchantName || t.name}</span>
+                    {t.pending && <span className="text-xs text-amber-600">pending</span>}
+                    {t.isRecurring && <RecurringBadge />}
+                  </div>
                 </td>
                 <td className="px-4 py-2 text-slate-500">
                   {t.account.name} •••• {t.account.mask}
