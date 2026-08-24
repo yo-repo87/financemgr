@@ -8,6 +8,8 @@ import { env } from "./lib/env";
 import { logger } from "./lib/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import { authRouter } from "./routes/auth";
+import { webauthnRouter } from "./routes/webauthn";
+import { twoFactorRouter } from "./routes/twoFactor";
 import { plaidRouter } from "./routes/plaid";
 import { accountsRouter } from "./routes/accounts";
 import { transactionsRouter } from "./routes/transactions";
@@ -49,6 +51,8 @@ app.use(pinoHttp({ logger }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 app.use("/api/auth", authRouter);
+app.use("/api/auth/webauthn", webauthnRouter);
+app.use("/api/auth/2fa", twoFactorRouter);
 app.use("/api/plaid", plaidRouter);
 app.use("/api/accounts", accountsRouter);
 app.use("/api/transactions", transactionsRouter);

@@ -3,9 +3,16 @@ import argon2 from "argon2";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { hashToken } from "../lib/crypto";
-import { signAccessToken, issueRefreshToken, setAuthCookies, clearAuthCookies } from "../lib/tokens";
+import {
+  signAccessToken,
+  issueRefreshToken,
+  setAuthCookies,
+  clearAuthCookies,
+  setPendingTwoFactorCookie,
+} from "../lib/tokens";
 import { authRateLimiter } from "../middleware/rateLimiter";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
+import { accountHasTwoFactor } from "./webauthn";
 
 export const authRouter = Router();
 
@@ -41,6 +48,20 @@ authRouter.post("/login", authRateLimiter, async (req, res, next) => {
     // Constant response shape whether the user exists or not, to avoid user enumeration.
     if (!user || !(await argon2.verify(user.passwordHash, password))) {
       return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    if (await accountHasTwoFactor(user.id)) {
+      const [setting, securityKeyCount] = await Promise.all([
+        prisma.twoFactorSetting.findUnique({ where: { userId: user.id } }),
+        prisma.webAuthnCredential.count({ where: { userId: user.id, purpose: "SECOND_FACTOR" } }),
+      ]);
+      const methods = [
+        ...(setting?.totpEnabled ? ["totp"] : []),
+        ...(securityKeyCount > 0 ? ["webauthn"] : []),
+        "backup_code",
+      ];
+      setPendingTwoFactorCookie(res, user.id);
+      return res.json({ requiresTwoFactor: true, methods });
     }
 
     const accessToken = signAccessToken(user.id);

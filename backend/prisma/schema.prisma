@@ -13,14 +13,73 @@ model User {
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  plaidItems      PlaidItem[]
-  budgets         Budget[]
-  aiSetting       AiSetting?
-  aiMessages      AiMessage[]
-  refreshTokens   RefreshToken[]
-  balanceSnapshots BalanceSnapshot[]
+  plaidItems        PlaidItem[]
+  budgets           Budget[]
+  aiSetting         AiSetting?
+  aiMessages        AiMessage[]
+  refreshTokens     RefreshToken[]
+  balanceSnapshots  BalanceSnapshot[]
+  webauthnCredentials WebAuthnCredential[]
+  twoFactorSetting  TwoFactorSetting?
+  backupCodes       BackupCode[]
 
   @@map("users")
+}
+
+enum CredentialPurpose {
+  PASSKEY
+  SECOND_FACTOR
+}
+
+// A single WebAuthn credential table serving two distinct roles, tagged by
+// `purpose` at registration time: PASSKEY credentials are registered as
+// discoverable/resident keys and can log a user in without a password.
+// SECOND_FACTOR credentials are only ever challenged after a password has
+// already been verified (see TwoFactorSetting).
+model WebAuthnCredential {
+  id           String            @id @default(uuid())
+  userId       String            @map("user_id")
+  credentialId String            @unique @map("credential_id")
+  publicKey    String            @map("public_key")
+  counter      Int               @default(0)
+  transports   String[]
+  purpose      CredentialPurpose
+  nickname     String?
+  createdAt    DateTime          @default(now()) @map("created_at")
+  lastUsedAt   DateTime?         @map("last_used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("webauthn_credentials")
+}
+
+model TwoFactorSetting {
+  userId              String   @id @map("user_id")
+  totpSecretEncrypted String?  @map("totp_secret_encrypted")
+  totpEnabled          Boolean  @default(false) @map("totp_enabled")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor_settings")
+}
+
+// One-time recovery codes for when TOTP/security-key 2FA is unavailable.
+// Hashed with the same sha256 helper used for refresh tokens - appropriate
+// here since these are high-entropy random codes, not user-chosen secrets.
+model BackupCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  used      Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+  usedAt    DateTime? @map("used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("backup_codes")
 }
 
 // One row per user per day, recorded whenever a Plaid sync completes, so the

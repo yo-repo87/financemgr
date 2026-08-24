@@ -16,6 +16,9 @@ export const env = {
   plaidClientId: process.env.PLAID_CLIENT_ID || "",
   plaidSecret: process.env.PLAID_SECRET || "",
   plaidEnv: process.env.PLAID_ENV || "sandbox",
+  webauthnRpId: process.env.WEBAUTHN_RP_ID || "localhost",
+  webauthnRpName: process.env.WEBAUTHN_RP_NAME || "FinanceMgr",
+  webauthnOrigin: process.env.WEBAUTHN_ORIGIN || "http://localhost:3140",
 };
 
 export const plaidConfigured = Boolean(env.plaidClientId && env.plaidSecret);

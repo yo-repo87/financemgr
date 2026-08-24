@@ -10,12 +10,21 @@ import Budgets from "./pages/Budgets";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Advisor from "./pages/Advisor";
+import SecuritySetup from "./pages/SecuritySetup";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route
+        path="/security-setup"
+        element={
+          <ProtectedRoute>
+            <SecuritySetup />
+          </ProtectedRoute>
+        }
+      />
       <Route
         element={
           <ProtectedRoute>

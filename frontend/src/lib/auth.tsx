@@ -6,12 +6,15 @@ interface User {
   email: string;
 }
 
+export type LoginResult = { requiresTwoFactor: true; methods: string[] } | { requiresTwoFactor: false };
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  completeLogin: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -28,9 +31,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string): Promise<LoginResult> {
     const res = await api.post("/api/auth/login", { email, password });
+    if (res.data.requiresTwoFactor) {
+      return { requiresTwoFactor: true, methods: res.data.methods };
+    }
     setUser(res.data);
+    return { requiresTwoFactor: false };
   }
 
   async function register(email: string, password: string) {
@@ -43,7 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>;
+  function completeLogin(user: User) {
+    setUser(user);
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout, completeLogin }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

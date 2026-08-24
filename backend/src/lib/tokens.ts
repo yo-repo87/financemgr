@@ -7,6 +7,7 @@ import { hashToken } from "./crypto";
 
 const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const PENDING_2FA_TTL_MS = 5 * 60 * 1000;
 
 const isProd = env.nodeEnv === "production";
 
@@ -40,4 +41,30 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
 export function clearAuthCookies(res: Response) {
   res.clearCookie("access_token", { path: "/" });
   res.clearCookie("refresh_token", { path: "/api/auth" });
+}
+
+// Short-lived, separate from the real session cookies - proves the password step
+// passed without granting a real session until the 2FA step also succeeds.
+export function setPendingTwoFactorCookie(res: Response, userId: string) {
+  const token = jwt.sign({ sub: userId, typ: "pending_2fa" }, env.jwtSecret, { expiresIn: "5m" });
+  res.cookie("twofa_pending", token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "strict",
+    path: "/api/auth",
+    maxAge: PENDING_2FA_TTL_MS,
+  });
+}
+
+export function clearPendingTwoFactorCookie(res: Response) {
+  res.clearCookie("twofa_pending", { path: "/api/auth" });
+}
+
+export function verifyPendingTwoFactorToken(token: string): string | null {
+  try {
+    const payload = jwt.verify(token, env.jwtSecret) as { sub: string; typ: string };
+    return payload.typ === "pending_2fa" ? payload.sub : null;
+  } catch {
+    return null;
+  }
 }
