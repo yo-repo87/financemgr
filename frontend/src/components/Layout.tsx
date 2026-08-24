@@ -10,6 +10,7 @@ const links = [
   { to: "/budgets", label: "Budgets" },
   { to: "/analytics", label: "Analytics" },
   { to: "/cashflow", label: "Cash Flow" },
+  { to: "/goals", label: "Goals" },
   { to: "/advisor", label: "Advisor" },
   { to: "/settings", label: "Settings" },
 ];
@@ -29,6 +30,7 @@ const moreLinks = [
   { to: "/budgets", label: "Budgets" },
   { to: "/analytics", label: "Analytics" },
   { to: "/cashflow", label: "Cash Flow" },
+  { to: "/goals", label: "Goals" },
   { to: "/advisor", label: "Advisor" },
   { to: "/settings", label: "Settings" },
 ];
