@@ -25,7 +25,7 @@ export async function subscribeToPush(): Promise<void> {
     throw new Error("Notification permission was not granted");
   }
 
-  const registration = await navigator.serviceWorker.register("/sw.js");
+  const registration = await navigator.serviceWorker.register("/financemgr/sw.js", { scope: "/financemgr/" });
   await navigator.serviceWorker.ready;
 
   const { data } = await api.get("/api/notifications/vapid-public-key");
