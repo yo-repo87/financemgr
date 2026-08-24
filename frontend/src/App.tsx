@@ -11,6 +11,7 @@ import Bills from "./pages/Bills";
 import Analytics from "./pages/Analytics";
 import CashFlow from "./pages/CashFlow";
 import Goals from "./pages/Goals";
+import DebtPayoff from "./pages/DebtPayoff";
 import Settings from "./pages/Settings";
 import Advisor from "./pages/Advisor";
 import SecuritySetup from "./pages/SecuritySetup";
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/cashflow" element={<CashFlow />} />
         <Route path="/goals" element={<Goals />} />
+        <Route path="/debt-payoff" element={<DebtPayoff />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/advisor" element={<Advisor />} />
       </Route>

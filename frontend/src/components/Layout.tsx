@@ -1,18 +1,30 @@
-import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
-const links = [
+// Top-level desktop nav, split around the "Planning" dropdown (rendered
+// between them). Budgets/Analytics/Cash Flow/Goals/Debt Payoff live under
+// that dropdown instead of as flat items - 5 more top-level links would push
+// the header past the point that fits comfortably at common desktop widths
+// (the same overflow shape fixed for tablet earlier).
+const primaryLinks = [
   { to: "/", label: "Dashboard" },
   { to: "/accounts", label: "Accounts" },
   { to: "/transactions", label: "Transactions" },
   { to: "/bills", label: "Bills" },
+];
+
+const secondaryLinks = [
+  { to: "/advisor", label: "Advisor" },
+  { to: "/settings", label: "Settings" },
+];
+
+const planningLinks = [
   { to: "/budgets", label: "Budgets" },
   { to: "/analytics", label: "Analytics" },
   { to: "/cashflow", label: "Cash Flow" },
   { to: "/goals", label: "Goals" },
-  { to: "/advisor", label: "Advisor" },
-  { to: "/settings", label: "Settings" },
+  { to: "/debt-payoff", label: "Debt Payoff" },
 ];
 
 // The 4 most-used sections get a bottom tab on phone; everything else lives
@@ -31,6 +43,7 @@ const moreLinks = [
   { to: "/analytics", label: "Analytics" },
   { to: "/cashflow", label: "Cash Flow" },
   { to: "/goals", label: "Goals" },
+  { to: "/debt-payoff", label: "Debt Payoff" },
   { to: "/advisor", label: "Advisor" },
   { to: "/settings", label: "Settings" },
 ];
@@ -84,6 +97,61 @@ function MoreIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className}>
+      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlanningDropdown() {
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = planningLinks.some((l) => location.pathname === l.to);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 ${
+          isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+        }`}
+      >
+        Planning
+        <ChevronDownIcon className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 bg-white border rounded-md shadow-lg py-1 min-w-[160px] z-40">
+          {planningLinks.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `block px-3 py-2 text-sm font-medium ${
+                  isActive ? "text-slate-900 bg-slate-100" : "text-slate-600 hover:bg-slate-50"
+                }`
+              }
+            >
+              {l.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -96,12 +164,26 @@ export default function Layout() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <span className="font-semibold text-lg text-slate-900">FinanceMgr</span>
-            <nav className="flex gap-1">
-              {links.map((l) => (
+            <nav className="flex items-center gap-1">
+              {primaryLinks.map((l) => (
                 <NavLink
                   key={l.to}
                   to={l.to}
                   end={l.to === "/"}
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded-md text-sm font-medium ${
+                      isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+                    }`
+                  }
+                >
+                  {l.label}
+                </NavLink>
+              ))}
+              <PlanningDropdown />
+              {secondaryLinks.map((l) => (
+                <NavLink
+                  key={l.to}
+                  to={l.to}
                   className={({ isActive }) =>
                     `px-3 py-1.5 rounded-md text-sm font-medium ${
                       isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"

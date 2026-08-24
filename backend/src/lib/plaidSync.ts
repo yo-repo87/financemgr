@@ -56,6 +56,7 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
       const account = await prisma.account.findUnique({ where: { plaidAccountId: card.account_id! } });
       if (!account) continue;
       const lastIssueDate = card.last_statement_issue_date ? new Date(card.last_statement_issue_date) : null;
+      const purchaseApr = card.aprs?.find((a) => a.apr_type === "purchase_apr")?.apr_percentage;
       await prisma.creditCardDetail.upsert({
         where: { accountId: account.id },
         create: {
@@ -66,6 +67,7 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
           minimumPaymentAmount: card.minimum_payment_amount ?? undefined,
           nextPaymentDueDate: card.next_payment_due_date ? new Date(card.next_payment_due_date) : undefined,
           lastPaymentAmount: card.last_payment_amount ?? undefined,
+          aprPercentage: purchaseApr ?? undefined,
         },
         update: {
           lastStatementIssueDate: lastIssueDate ?? undefined,
@@ -74,6 +76,7 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
           minimumPaymentAmount: card.minimum_payment_amount ?? undefined,
           nextPaymentDueDate: card.next_payment_due_date ? new Date(card.next_payment_due_date) : undefined,
           lastPaymentAmount: card.last_payment_amount ?? undefined,
+          aprPercentage: purchaseApr ?? undefined,
         },
       });
     }

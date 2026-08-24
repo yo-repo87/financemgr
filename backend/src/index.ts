@@ -23,6 +23,7 @@ import { subscriptionsRouter } from "./routes/subscriptions";
 import { analyticsRouter } from "./routes/analytics";
 import { cashflowRouter } from "./routes/cashflow";
 import { goalsRouter } from "./routes/goals";
+import { debtPayoffRouter } from "./routes/debtPayoff";
 import { aiRouter } from "./routes/ai";
 import { startSyncJob } from "./jobs/sync";
 import { startBillReminderJob } from "./jobs/billReminders";
@@ -79,6 +80,7 @@ app.use("/api/subscriptions", subscriptionsRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/cashflow", cashflowRouter);
 app.use("/api/goals", goalsRouter);
+app.use("/api/debt-payoff", debtPayoffRouter);
 app.use("/api/ai", aiRouter);
 
 app.use(errorHandler);
