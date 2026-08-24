@@ -6,6 +6,7 @@ const links = [
   { to: "/", label: "Dashboard" },
   { to: "/accounts", label: "Accounts" },
   { to: "/transactions", label: "Transactions" },
+  { to: "/bills", label: "Bills" },
   { to: "/budgets", label: "Budgets" },
   { to: "/analytics", label: "Analytics" },
   { to: "/advisor", label: "Advisor" },
@@ -13,15 +14,18 @@ const links = [
 ];
 
 // The 4 most-used sections get a bottom tab on phone; everything else lives
-// behind "More" so tap targets stay comfortably above the ~44px minimum.
+// behind "More" so tap targets stay comfortably above the ~44px minimum. Bills
+// takes a primary slot (due-date tracking is exactly the kind of thing checked
+// often on a phone) and Budgets moves into "More" to keep the tab bar at 5.
 const tabLinks = [
   { to: "/", label: "Dashboard", icon: HomeIcon },
   { to: "/accounts", label: "Accounts", icon: BankIcon },
   { to: "/transactions", label: "Transactions", icon: ListIcon },
-  { to: "/budgets", label: "Budgets", icon: TargetIcon },
+  { to: "/bills", label: "Bills", icon: TargetIcon },
 ];
 
 const moreLinks = [
+  { to: "/budgets", label: "Budgets" },
   { to: "/analytics", label: "Analytics" },
   { to: "/advisor", label: "Advisor" },
   { to: "/settings", label: "Settings" },

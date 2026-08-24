@@ -17,6 +17,7 @@ import { plaidRouter } from "./routes/plaid";
 import { accountsRouter } from "./routes/accounts";
 import { transactionsRouter } from "./routes/transactions";
 import { budgetsRouter } from "./routes/budgets";
+import { billsRouter } from "./routes/bills";
 import { analyticsRouter } from "./routes/analytics";
 import { aiRouter } from "./routes/ai";
 import { startSyncJob } from "./jobs/sync";
@@ -65,6 +66,7 @@ app.use("/api/plaid", plaidRouter);
 app.use("/api/accounts", accountsRouter);
 app.use("/api/transactions", transactionsRouter);
 app.use("/api/budgets", budgetsRouter);
+app.use("/api/bills", billsRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/ai", aiRouter);
 

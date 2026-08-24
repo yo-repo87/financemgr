@@ -27,8 +27,67 @@ model User {
   backupCodes       BackupCode[]
   securityQuestions SecurityQuestion[]
   oauthAccounts     OAuthAccount[]
+  bills             Bill[]
+  billPayments      BillPayment[]
 
   @@map("users")
+}
+
+enum BillRecurrence {
+  ONE_TIME
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// A bill is a recurring definition, not a per-cycle record - due dates are
+// computed on read from anchorDueDate + recurrence (see lib/billing.ts).
+// Whether a given cycle is paid is represented by BillPayment row presence,
+// not a flag, so nothing needs to pre-generate future cycles.
+model Bill {
+  id                String         @id @default(uuid())
+  userId            String         @map("user_id")
+  name              String
+  amount            Decimal        @db.Decimal(14, 2)
+  category          String?
+  recurrence        BillRecurrence
+  anchorDueDate     DateTime       @map("anchor_due_date") @db.Date
+  // Matches against transaction name/merchant (case-insensitive) to
+  // auto-mark a cycle paid from synced Plaid data - e.g. "flex" for
+  // Flex rent-split withdrawals. Null/empty means manual-only.
+  autoDetectKeyword String?        @map("auto_detect_keyword")
+  active            Boolean        @default(true)
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments BillPayment[]
+
+  @@index([userId])
+  @@map("bills")
+}
+
+model BillPayment {
+  id            String    @id @default(uuid())
+  billId        String    @map("bill_id")
+  userId        String    @map("user_id")
+  dueDate       DateTime  @map("due_date") @db.Date
+  paidAt        DateTime? @map("paid_at")
+  amountPaid    Decimal?  @map("amount_paid") @db.Decimal(14, 2)
+  // Set only when auto-matched from a synced transaction - distinguishes
+  // "Auto-detected" from "Marked paid manually" in the UI. SetNull (not
+  // Cascade) so a removed/re-synced transaction doesn't delete payment history.
+  transactionId String?   @map("transaction_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  bill        Bill         @relation(fields: [billId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@unique([billId, dueDate])
+  @@index([userId])
+  @@map("bill_payments")
 }
 
 enum OAuthProvider {
@@ -227,6 +286,7 @@ model Transaction {
   createdAt         DateTime @default(now()) @map("created_at")
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  billPayments BillPayment[]
 
   @@index([accountId, date])
   @@index([category])

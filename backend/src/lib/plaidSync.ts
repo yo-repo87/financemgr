@@ -3,6 +3,7 @@ import { plaidClient } from "./plaidClient";
 import { prisma } from "./prisma";
 import { decryptField } from "./crypto";
 import { logger } from "./logger";
+import { matchTransactionsToBills } from "./billMatching";
 
 // Plaid gives last_statement_issue_date but not a guaranteed forward-looking closing
 // date, so we estimate the next one as one statement cycle (~1 calendar month) later.
@@ -127,6 +128,7 @@ export async function syncPlaidItem(plaidItemDbId: string): Promise<void> {
   });
 
   await recordNetWorthSnapshot(item.userId);
+  await matchTransactionsToBills(item.userId);
 }
 
 // Assets (depository/investment) add to net worth; liabilities (credit/loan) subtract.
