@@ -1,4 +1,11 @@
 import { prisma } from "./prisma";
+import { sendPushToUser } from "./push";
+
+const PRICE_INCREASE_THRESHOLD = 0.05; // 5%
+
+function formatCurrency(amount: number): string {
+  return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
 
 const LOOKBACK_MONTHS = 6;
 const MIN_GAP_DAYS = 25;
@@ -105,7 +112,18 @@ export async function detectSubscriptions(userId: string): Promise<void> {
 
   for (const candidate of candidates) {
     const current = existingByKey.get(candidate.merchantKey);
-    if (current && current.status !== "NEW") continue; // respect a prior dismiss/track decision
+    // DISMISSED means the user already said "not a subscription" - leave it alone.
+    // NEW and TRACKED both still refresh on re-detection, since a TRACKED
+    // subscription's price can still go up and the user should hear about that.
+    if (current && current.status === "DISMISSED") continue;
+
+    if (current && candidate.amount > Number(current.amount) * (1 + PRICE_INCREASE_THRESHOLD)) {
+      await sendPushToUser(userId, {
+        title: "Subscription price increase",
+        body: `${candidate.displayName} increased: ${formatCurrency(Number(current.amount))} → ${formatCurrency(candidate.amount)}`,
+        url: "/bills",
+      });
+    }
 
     await prisma.detectedSubscription.upsert({
       where: { userId_merchantKey: { userId, merchantKey: candidate.merchantKey } },
