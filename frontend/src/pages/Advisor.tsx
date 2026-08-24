@@ -36,7 +36,9 @@ export default function Advisor() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)]">
+    // Mobile height accounts for the phone header, bottom tab bar, and both
+    // safe-area insets (none of which the desktop 140px offset needs to know about).
+    <div className="flex flex-col h-[calc(100dvh-15rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] md:h-[calc(100vh-140px)]">
       <h1 className="text-lg font-semibold text-slate-900 mb-4">Advisor</h1>
 
       <div className="flex-1 overflow-y-auto bg-white rounded-lg border p-4 space-y-3">
@@ -70,12 +72,12 @@ export default function Advisor() {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask your advisor..."
-          className="flex-1 border rounded-md px-3 py-2 text-sm"
+          className="flex-1 border rounded-md px-3 py-2 text-sm min-h-[44px]"
         />
         <button
           type="submit"
           disabled={askMutation.isPending}
-          className="bg-slate-900 text-white rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+          className="bg-slate-900 text-white rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 min-h-[44px]"
         >
           Send
         </button>

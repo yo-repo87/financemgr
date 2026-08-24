@@ -40,7 +40,7 @@ export default function PlaidLinkButton() {
     <button
       onClick={() => open()}
       disabled={!ready || !linkToken}
-      className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded-md disabled:opacity-50"
+      className="w-full sm:w-auto bg-slate-900 text-white text-sm font-medium px-4 py-2.5 sm:py-2 rounded-md disabled:opacity-50 min-h-[44px] sm:min-h-0"
     >
       Connect an account
     </button>

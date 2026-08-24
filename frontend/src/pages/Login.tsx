@@ -87,8 +87,8 @@ export default function Login() {
 
   if (step !== "password") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <form onSubmit={onCodeSubmit} className="bg-white p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        <form onSubmit={onCodeSubmit} className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
           <h1 className="text-xl font-semibold text-slate-900">Verify it's you</h1>
           {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -135,8 +135,8 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
         <h1 className="text-xl font-semibold text-slate-900">Sign in to FinanceMgr</h1>
         {passwordResetSuccess && (
           <p className="text-sm text-emerald-600">Password reset. Please sign in with your new password.</p>

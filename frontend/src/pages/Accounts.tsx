@@ -61,7 +61,7 @@ export default function Accounts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg font-semibold text-slate-900">Accounts</h1>
         <PlaidLinkButton />
       </div>
@@ -70,7 +70,7 @@ export default function Accounts() {
         <div className="bg-white rounded-lg border p-4 space-y-2">
           <h2 className="text-sm font-medium text-slate-700 mb-2">Connected institutions</h2>
           {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between text-sm">
+            <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 text-sm">
               <div>
                 <span className="font-medium text-slate-900">{item.institutionName || "Unknown institution"}</span>
                 <span className="text-slate-400 ml-2">

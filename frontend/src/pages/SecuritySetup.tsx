@@ -25,7 +25,7 @@ export default function SecuritySetup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 py-10">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 py-10 px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-xl font-semibold text-slate-900">Secure your account</h1>

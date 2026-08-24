@@ -11,7 +11,7 @@ import {
   Cell,
 } from "recharts";
 import { api } from "../lib/api";
-import { formatCurrency } from "../lib/format";
+import { formatCurrency, formatCompactCurrency } from "../lib/format";
 import { categorical, chrome } from "../lib/chartTheme";
 
 interface CategorySpend {
@@ -48,30 +48,31 @@ export default function Analytics() {
   const categoryData = byCategory ? foldToTop(byCategory) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">Analytics</h1>
 
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-white rounded-lg border p-4 sm:p-6">
         <h2 className="text-sm font-medium text-slate-700 mb-1">Spending by category</h2>
         <p className="text-xs text-slate-400 mb-4">Last 30 days</p>
         {categoryData.length === 0 ? (
           <p className="text-sm text-slate-400">No spending data yet.</p>
         ) : (
           <ResponsiveContainer width="100%" height={Math.max(200, categoryData.length * 40)}>
-            <BarChart data={categoryData} layout="vertical" margin={{ left: 16, right: 24, top: 8, bottom: 8 }}>
+            <BarChart data={categoryData} layout="vertical" margin={{ left: 0, right: 8, top: 8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chrome.gridline} horizontal={false} />
               <XAxis
                 type="number"
-                tickFormatter={(v) => formatCurrency(v)}
+                tickFormatter={(v) => formatCompactCurrency(v)}
                 stroke={chrome.axis}
-                tick={{ fill: chrome.mutedText, fontSize: 12 }}
+                tick={{ fill: chrome.mutedText, fontSize: 11 }}
               />
               <YAxis
                 type="category"
                 dataKey="category"
-                width={140}
+                width={96}
+                tickFormatter={(v: string) => (v.length > 13 ? `${v.slice(0, 12)}…` : v)}
                 stroke={chrome.axis}
-                tick={{ fill: chrome.primaryText, fontSize: 12 }}
+                tick={{ fill: chrome.primaryText, fontSize: 11 }}
               />
               <Tooltip formatter={(v: number) => formatCurrency(v)} />
               <Bar dataKey="total" radius={[0, 4, 4, 0]}>
@@ -84,21 +85,21 @@ export default function Analytics() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-white rounded-lg border p-4 sm:p-6">
         <h2 className="text-sm font-medium text-slate-700 mb-4">Income vs. expenses</h2>
         <p className="text-xs text-slate-400 mb-4">Last 6 months</p>
         {!trend || trend.length === 0 ? (
           <p className="text-sm text-slate-400">No transaction history yet.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={trend} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chrome.gridline} vertical={false} />
-              <XAxis dataKey="month" stroke={chrome.axis} tick={{ fill: chrome.mutedText, fontSize: 12 }} />
+              <XAxis dataKey="month" stroke={chrome.axis} tick={{ fill: chrome.mutedText, fontSize: 11 }} />
               <YAxis
-                tickFormatter={(v) => formatCurrency(v)}
+                tickFormatter={(v) => formatCompactCurrency(v)}
                 stroke={chrome.axis}
-                tick={{ fill: chrome.mutedText, fontSize: 12 }}
-                width={90}
+                tick={{ fill: chrome.mutedText, fontSize: 11 }}
+                width={52}
               />
               <Tooltip formatter={(v: number) => formatCurrency(v)} />
               <Legend wrapperStyle={{ fontSize: 12 }} />

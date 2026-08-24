@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { api } from "../lib/api";
-import { formatCurrency, formatDate } from "../lib/format";
+import { formatCurrency, formatCompactCurrency, formatDate } from "../lib/format";
 import { chrome, sequentialBlue } from "../lib/chartTheme";
 
 interface Account {
@@ -34,33 +34,33 @@ export default function Dashboard() {
   }, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg border p-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-lg border p-4 sm:p-6">
         <p className="text-sm text-slate-500">Net worth</p>
-        <p className="text-4xl font-semibold text-slate-900 mt-1">{formatCurrency(netWorth)}</p>
+        <p className="text-3xl sm:text-4xl font-semibold text-slate-900 mt-1">{formatCurrency(netWorth)}</p>
       </div>
 
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-white rounded-lg border p-4 sm:p-6">
         <h2 className="text-sm font-medium text-slate-700 mb-4">Net worth over time</h2>
         {!trend || trend.length < 2 ? (
           <p className="text-sm text-slate-400">
             Not enough history yet — net worth is recorded each time your accounts sync.
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={trend} margin={{ left: 8, right: 16, top: 8, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={trend} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chrome.gridline} vertical={false} />
               <XAxis
                 dataKey="date"
                 tickFormatter={(d) => formatDate(d)}
                 stroke={chrome.axis}
-                tick={{ fill: chrome.mutedText, fontSize: 12 }}
+                tick={{ fill: chrome.mutedText, fontSize: 11 }}
               />
               <YAxis
-                tickFormatter={(v) => formatCurrency(v)}
+                tickFormatter={(v) => formatCompactCurrency(v)}
                 stroke={chrome.axis}
-                tick={{ fill: chrome.mutedText, fontSize: 12 }}
-                width={90}
+                tick={{ fill: chrome.mutedText, fontSize: 11 }}
+                width={52}
               />
               <Tooltip
                 formatter={(v: number) => formatCurrency(v)}

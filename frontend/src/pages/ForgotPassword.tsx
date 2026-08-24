@@ -66,8 +66,8 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border w-full max-w-sm space-y-4">
         <h1 className="text-xl font-semibold text-slate-900">Reset your password</h1>
         {error && <p className="text-sm text-red-600">{error}</p>}
 

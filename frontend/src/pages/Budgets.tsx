@@ -59,17 +59,17 @@ export default function Budgets() {
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">Budgets</h1>
 
-      <form onSubmit={onSubmit} className="bg-white rounded-lg border p-4 flex items-end gap-3">
+      <form onSubmit={onSubmit} className="bg-white rounded-lg border p-4 flex flex-col sm:flex-row sm:items-end gap-3">
         <div className="flex-1">
           <label className="block text-xs font-medium text-slate-500 mb-1">Category</label>
           <input
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="e.g. Groceries"
-            className="w-full border rounded-md px-3 py-2 text-sm"
+            className="w-full border rounded-md px-3 py-2.5 sm:py-2 text-sm"
           />
         </div>
-        <div className="w-40">
+        <div className="sm:w-40">
           <label className="block text-xs font-medium text-slate-500 mb-1">Monthly limit</label>
           <input
             type="number"
@@ -77,10 +77,13 @@ export default function Budgets() {
             step="0.01"
             value={limit}
             onChange={(e) => setLimit(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 text-sm"
+            className="w-full border rounded-md px-3 py-2.5 sm:py-2 text-sm"
           />
         </div>
-        <button type="submit" className="bg-slate-900 text-white rounded-md px-4 py-2 text-sm font-medium">
+        <button
+          type="submit"
+          className="bg-slate-900 text-white rounded-md px-4 py-2.5 sm:py-2 text-sm font-medium min-h-[44px] sm:min-h-0"
+        >
           Save budget
         </button>
       </form>

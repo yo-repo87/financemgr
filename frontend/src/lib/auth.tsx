@@ -16,6 +16,7 @@ interface AuthContextValue {
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   completeLogin: (user: User) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -55,8 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   }
 
+  // Re-fetches /me so client state (e.g. hasSecurityQuestions) reflects a change
+  // made server-side without requiring a full logout/login - ProtectedRoute reads
+  // this cached value to gate mandatory setup flows, so it must stay in sync.
+  async function refreshUser() {
+    const res = await api.get("/api/auth/me");
+    setUser(res.data);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, completeLogin }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, completeLogin, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
