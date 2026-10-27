@@ -1,44 +1,14 @@
 name: financemgr
 
+# db now lives in the shared-postgres instance (see
+# /home/pi/.claude/plans/recursive-hopping-sifakis.md) - financemgr_db is stopped,
+# not deleted, kept as a rollback path.
 services:
-  db:
-    build:
-      context: ./db
-    container_name: financemgr_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER:-financemgr}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME:-financemgr}
-    command:
-      - postgres
-      - -c
-      - ssl=on
-      - -c
-      - ssl_cert_file=/etc/postgresql/certs/server.crt
-      - -c
-      - ssl_key_file=/etc/postgresql/certs/server.key
-    volumes:
-      - financemgr_db_data:/var/lib/postgresql/data
-    # Loopback-only: reachable from this host for dev tooling, never exposed on the LAN.
-    ports:
-      - "127.0.0.1:5441:5432"
-    networks:
-      - financemgr-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-financemgr} -d ${DB_NAME:-financemgr}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend
     container_name: financemgr_backend
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -48,6 +18,7 @@ services:
       - "3141:4000"
     networks:
       - financemgr-net
+      - shared-postgres-net
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -69,9 +40,8 @@ services:
     networks:
       - financemgr-net
 
-volumes:
-  financemgr_db_data:
-
 networks:
   financemgr-net:
     driver: bridge
+  shared-postgres-net:
+    external: true
